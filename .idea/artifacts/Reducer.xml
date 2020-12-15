@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="Reducer">
+    <output-path>$PROJECT_DIR$/out/artifacts/Reducer</output-path>
+    <root id="archive" name="Reducer.jar">
+      <element id="module-output" name="Reducer" />
+    </root>
+  </artifact>
+</component>
