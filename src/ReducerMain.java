@@ -14,10 +14,10 @@ public class    ReducerMain {
         }
 
         try{
-            reducerService = new ReducerService();
+            reducerService = new ReducerService(port);
             r.rebind("reducerservice", reducerService);
 
-            System.out.println("Reducer ready");
+            System.out.println("Reducer ready port:"+port);
         }catch(Exception e) {
             System.out.println("Reducer main " + e.getMessage());
         }
