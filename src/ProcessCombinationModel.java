@@ -6,5 +6,5 @@ public class ProcessCombinationModel implements Serializable {
     public long resourceLength=0;
     public float percentage;
 
-    public ProcessCombinationModel() {}
+
 }

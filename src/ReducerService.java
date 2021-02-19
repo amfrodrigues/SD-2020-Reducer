@@ -5,18 +5,19 @@ import java.util.*;
 
 public class ReducerService extends UnicastRemoteObject implements ReducerServiceInterface {
     private final String storage_rmi_address = "rmi://localhost:2022/storageservice";
-    private String id;
+    private final String id;
 
     public ReducerService(Integer id) throws RemoteException {
         this.id = id.toString();
     }
 
 
-
+    /*
+        Method that processes the combinations issued by the mappers
+     */
     @Override
-    public void process_combinations(ArrayList<ArrayList<String>> combinations, int fileCount) throws RemoteException {
-        System.out.println("REDUCER "+id+": Starting to process combinations" );
-        boolean status = false;
+    public boolean process_combinations(ArrayList<ArrayList<String>> combinations) throws RemoteException {
+      //  System.out.println("REDUCER "+id+": Starting to process combinations" );
         ArrayList<String> r;
         StringBuffer line = new StringBuffer();
         Iterator combIterator = combinations.iterator();
@@ -30,17 +31,19 @@ public class ReducerService extends UnicastRemoteObject implements ReducerServic
                 if(line.length()>0) line.append(",");
                 line.append(lineIterator.next().toString());
             }
-            //System.out.println("Reducer["+id+"] debug: ReadLine="+line.toString());
 
             CombinationProcessingData combinationProcessingData = new CombinationProcessingData();
             combinationProcessingData.combination = line.toString();
-            //System.out.println("Reducer: Test combination_string = "+ combinationProcessingData.combination);
-          //  if(combinationProcessingData instanceof Serializable) System.out.println("Reducer: Test combination_string serializable");
+           StorageServiceInterface storage_rmi = null;
 
-          status =  calculateStatistics(combinationProcessingData,fileCount);
+            try{
+                storage_rmi = (StorageServiceInterface) Naming.lookup(storage_rmi_address);
+            }catch(Exception e){e.printStackTrace();}
+            calculateStatistics(combinationProcessingData,storage_rmi.getFileCount());
             if(i++%100000==0) System.out.println("REDUCER "+id+": Comb " + i);
          }
-
+            System.out.println("Reducer["+this.id+"] finished the task");
+        return true;
     }
 
 
@@ -49,7 +52,7 @@ public class ReducerService extends UnicastRemoteObject implements ReducerServic
      * @param combinationInfo single combination of resources
      * @param fileCount number of runs
      */
-   private boolean calculateStatistics(CombinationProcessingData combinationInfo, int fileCount){
+   private void calculateStatistics(CombinationProcessingData combinationInfo, int fileCount){
        // System.out.println("Reducer["+this.id+"] : Starting Calculate Statistic");
         boolean resourceFound=false;
         StorageServiceInterface storage_rmi = null;
@@ -57,7 +60,7 @@ public class ReducerService extends UnicastRemoteObject implements ReducerServic
         try{
             storage_rmi = (StorageServiceInterface) Naming.lookup(storage_rmi_address);
             timeHarMap = storage_rmi.getTimeHarMap();
-        }catch(Exception e){e.printStackTrace(); return false;}
+        }catch(Exception e){e.printStackTrace();}
 
         String[] resources = combinationInfo.combination.split(","); // resources of each combination
         for (int i =0; i < fileCount; i++) { //controlo por run
@@ -84,10 +87,9 @@ public class ReducerService extends UnicastRemoteObject implements ReducerServic
             System.out.print(combinationInfo.percentage + "\n");
 
             try{
-                storage_rmi.process_reducer_data(combinationInfo);
+                storage_rmi.process_reducer_data(combinationInfo); // saves the statistics in the storage so master can get them for the client
             }catch(Exception e){e.printStackTrace();}
             System.out.println("REDUCER "+id+": Comb valida. Percentagem: " + combinationInfo.percentage);
         }
-        return true;
     }
 }
