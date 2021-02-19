@@ -1,3 +1,4 @@
+
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -18,31 +19,36 @@ public class ReducerService extends UnicastRemoteObject implements ReducerServic
     @Override
     public boolean process_combinations(ArrayList<ArrayList<String>> combinations) throws RemoteException {
       //  System.out.println("REDUCER "+id+": Starting to process combinations" );
+        ArrayList<ProcessCombinationModel> combinationstatistic = new ArrayList<>();
         ArrayList<String> r;
         StringBuffer line = new StringBuffer();
         Iterator combIterator = combinations.iterator();
         System.out.println("REDUCER "+id+": Número combinações " + combinations.size());
-        int i = 0;
+        //int i = 0;
         while (combIterator.hasNext()){
             r = (ArrayList<String>) combIterator.next();
             line.setLength(0);
-            Iterator lineIterator = r.iterator();
-            while(lineIterator.hasNext()){
-                if(line.length()>0) line.append(",");
-                line.append(lineIterator.next().toString());
+            for (String s : r) {
+                if (line.length() > 0) line.append(",");
+                line.append(s);
             }
 
-            CombinationProcessingData combinationProcessingData = new CombinationProcessingData();
-            combinationProcessingData.combination = line.toString();
+            ProcessCombinationModel processCombinationModel = new ProcessCombinationModel();
+            processCombinationModel.combination = line.toString();
            StorageServiceInterface storage_rmi = null;
 
             try{
                 storage_rmi = (StorageServiceInterface) Naming.lookup(storage_rmi_address);
             }catch(Exception e){e.printStackTrace();}
-            calculateStatistics(combinationProcessingData,storage_rmi.getFileCount());
-            if(i++%100000==0) System.out.println("REDUCER "+id+": Comb " + i);
+            calculateStatistics(processCombinationModel,storage_rmi.getFileCount(),combinationstatistic);
+          //  if(i++%1000==0) System.out.println("REDUCER "+id+": Comb " + i);
          }
             System.out.println("Reducer["+this.id+"] finished the task");
+        StorageServiceInterface storage_rmi ;
+        try{
+            storage_rmi = (StorageServiceInterface) Naming.lookup(storage_rmi_address);
+            storage_rmi.addcombinationsStatistic(combinationstatistic);
+        }catch(Exception e){e.printStackTrace();}
         return true;
     }
 
@@ -52,10 +58,10 @@ public class ReducerService extends UnicastRemoteObject implements ReducerServic
      * @param combinationInfo single combination of resources
      * @param fileCount number of runs
      */
-   private void calculateStatistics(CombinationProcessingData combinationInfo, int fileCount){
+   private void calculateStatistics(ProcessCombinationModel combinationInfo, int fileCount,ArrayList<ProcessCombinationModel> combinationstatistic){
        // System.out.println("Reducer["+this.id+"] : Starting Calculate Statistic");
         boolean resourceFound=false;
-        StorageServiceInterface storage_rmi = null;
+        StorageServiceInterface storage_rmi ;
         LinkedHashMap<String, ArrayList<ResourceInfo>> timeHarMap = null;
         try{
             storage_rmi = (StorageServiceInterface) Naming.lookup(storage_rmi_address);
@@ -82,14 +88,13 @@ public class ReducerService extends UnicastRemoteObject implements ReducerServic
         combinationInfo.percentage = (float) combinationInfo.numberOfRuns/fileCount;
 
         if(combinationInfo.percentage > 0.5) {
-            System.out.print("REDUCER "+id+": Combination + probability");
-            for(String s: resources) System.out.print(System.identityHashCode(s) + "  ");
+          //  System.out.print("REDUCER "+id+": Combination + probability");
+           /* for(String s: resources) System.out.print(System.identityHashCode(s) + "  ");
             System.out.print(combinationInfo.percentage + "\n");
+        */
+            combinationstatistic.add(combinationInfo); // saves the statistics in the local variable
 
-            try{
-                storage_rmi.process_reducer_data(combinationInfo); // saves the statistics in the storage so master can get them for the client
-            }catch(Exception e){e.printStackTrace();}
-            System.out.println("REDUCER "+id+": Comb valida. Percentagem: " + combinationInfo.percentage);
+         //   System.out.println("REDUCER "+id+": Comb valida. Percentagem: " + combinationInfo.percentage);
         }
     }
 }
